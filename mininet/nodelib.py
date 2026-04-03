@@ -12,7 +12,7 @@ import subprocess
 import time
 
 from mininet.clean import addCleanupCallback
-from mininet.node import Node, Switch
+from mininet.node import Node, Host, Switch
 from mininet.log import info, warn
 from mininet.moduledeps import pathCheck
 from mininet.util import isShellBuiltin, quietRun
