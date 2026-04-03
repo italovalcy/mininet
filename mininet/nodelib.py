@@ -11,10 +11,11 @@ import select
 import subprocess
 import time
 
+from mininet.clean import addCleanupCallback
 from mininet.node import Node, Switch
 from mininet.log import info, warn
 from mininet.moduledeps import pathCheck
-from mininet.util import quietRun
+from mininet.util import isShellBuiltin, quietRun
 
 
 class LinuxBridge( Switch ):
@@ -196,7 +197,6 @@ class DockerNode( Node ):
             raise ValueError(
                 "DockerNode requires docker executable. Is docker installed?"
             )
-        addCleanupCallback(cls.clean_up)
 
     @classmethod
     def setup( cls ):
@@ -280,7 +280,7 @@ class DockerNode( Node ):
         for _ in range(30):
             pid_cmd = ["docker", "inspect", "--format='{{ .State.Pid }}'", self.name]
             pidp = subprocess.run(pid_cmd, capture_output=True, text=True)
-            ps_out = pidp.stdout.strip().strip('"').strip("'")
+            ps_out = pidp.stdout.strip().strip("'\"")
             if ps_out.isdigit():
                 break
             time.sleep(1)
@@ -302,7 +302,10 @@ class DockerNode( Node ):
         ).strip()
         if not containers:
             return
-        containers = " ".join(containers.split())
+        containers = " ".join(re.sub("['\"]", "", containers).split())
         info("*** Cleaning up Docker containers\n")
-        info(containers)
+        info(containers + "\n")
         quietRun(f"docker rm -f {containers}")
+
+
+addCleanupCallback(DockerNode.clean_up)
