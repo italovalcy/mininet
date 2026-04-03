@@ -170,19 +170,26 @@ class DockerNode( Node ):
     """
     initialized = False
 
-    def __init__(self, name, image=None, port_map=None, fs_map=None, **kwargs):
+    def __init__(
+        self, name, image=None, publish=None, volume=None, env=None, **kwargs
+    ):
         """
         Create a DockerNode based on the provided parameters:
           name: name of the node
           image: docker image to be used
-          port_map: list of tuples for port mapping for docker run -p ...
-          fs_map: list of tuples for volume mapping for docker run -v ...
+          publish: list of tuples or strings for publishing a container's
+             port(s) to the host. Passed to: docker run -p ...
+          volume: list of tuples or strings for binding mount a volume from
+             host to the container. Passed to: docker run -v ...
+          env: list of tuples or strings for set environment variables into the
+             container. Passed to: docker run -e ...
        """
         if image is None:
             raise UnboundLocalError("Docker image is not specified")
         self.docker_image = image
-        self.port_map = port_map
-        self.fs_map = fs_map
+        self.publish = publish
+        self.volume = volume
+        self.env = env
         kwargs["inNamespace"] = True
         Node.__init__(self, name, **kwargs)
         if not DockerNode.initialized:
@@ -245,12 +252,18 @@ class DockerNode( Node ):
             '--label=app=mininet',
             '--hostname=' + self.name, '--name=' + self.name,
         ]
-        if self.port_map is not None:
-            for p in self.port_map:
-                args.extend( [ '-p', '%d:%d' % ( p[ 0 ], p[ 1 ] ) ] )
-        if self.fs_map is not None:
-            for f in self.fs_map:
-                args.extend( [ '-v', '%s:%s' % ( f[ 0 ], f[ 1 ] ) ] )
+        if isinstance(self.publish, list):
+            for p in self.publish:
+                pub = "%d:%d" % (p[0], p[1]) if isinstance(p, tuple) else p
+                args.extend(['-p', pub])
+        if isinstance(self.volume, list):
+            for v in self.volume:
+                vol = "%s:%s" % (v[0], v[1]) if isinstance(v, tuple) else v
+                args.extend(['-v', vol])
+        if isinstance(self.env, list):
+            for e in self.env:
+                env = "%s='%s'" % (e[0], e[1]) if isinstance(e, tuple) else e
+                args.extend(['-e', env])
         args.extend([self.docker_image, "env", "PS1=" + chr(127), "sh"])
 
         self.master, self.slave = pty.openpty()
@@ -306,6 +319,18 @@ class DockerNode( Node ):
         info("*** Cleaning up Docker containers\n")
         info(containers + "\n")
         quietRun(f"docker rm -f {containers}")
+
+
+class DockerSwitch(DockerNode, Switch):
+    """A Docker switch is a Docker Node with switch functionality"""
+    def start( self, controllers ):
+        """Start the switch"""
+        pass
+
+
+class DockerHost(DockerNode, Host):
+    """A Docker host is the same as a Docker Node"""
+    pass
 
 
 addCleanupCallback(DockerNode.clean_up)

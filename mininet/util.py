@@ -631,7 +631,13 @@ def splitArgs( argstr ):
     kwargs = {}
     for s in [ p for p in params if '=' in p ]:
         key, val = s.split( '=', 1 )
-        kwargs[ key ] = makeNumeric( val )
+        if key in kwargs:
+            if isinstance(kwargs[key], list):
+                kwargs[key].append(makeNumeric(val))
+            else:
+                kwargs[key] = [kwargs[key], makeNumeric(val)]
+        else:
+            kwargs[ key ] = makeNumeric( val )
     return fn, args, kwargs
 
 def customClass( classes, argStr ):
