@@ -101,7 +101,7 @@ from mininet.cli import CLI
 from mininet.log import info, error, output, warn
 from mininet.node import ( Node, Host, OVSKernelSwitch, DefaultController,
                            Controller )
-from mininet.nodelib import NAT
+from mininet.nodelib import NAT, DockerNode
 from mininet.link import Link, Intf
 from mininet.util import ( quietRun, fixLimits, numCores, ensureRoot,
                            macColonHex, ipStr, ipParse, netParse, ipAdd,
@@ -324,6 +324,17 @@ class Mininet( object ):
                 if host.inNamespace:
                     host.setDefaultRoute( 'via %s' % natIP )
         return nat
+
+    def addDocker( self, name, **params):
+        """Add a Docker node to the Mininet network
+           name: name of Docker node
+           params: other Docker node params, notably:
+               image: docker image used for this node
+               port_map: list of tuples with port numbers for docker run -p ...
+               fs_map: list of tuples with volumes for docker run -v ...
+        """
+        docker = self.addHost( name, cls=DockerNode, **params )
+        return docker
 
     # BL: We now have four ways to look up nodes
     # This may (should?) be cleaned up in the future.

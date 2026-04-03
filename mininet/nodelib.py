@@ -152,3 +152,150 @@ class NAT( Node ):
         # Put the forwarding state back to what it was
         self.cmd( 'sysctl net.ipv4.ip_forward=%s' % self.forwardState )
         super( NAT, self ).terminate()
+
+
+class DockerNode( Node ):
+    """
+    A virtual node running in a docker container
+
+    Based on https://github.com/p4lang/p4factory
+    """
+    initialized = False
+
+    def __init__(self, name, image=None, port_map=None, fs_map=None, **kwargs):
+        """
+        Create a DockerNode based on the provided parameters:
+          name: name of the node
+          image: docker image to be used
+          port_map: list of tuples for port mapping for docker run -p ...
+          fs_map: list of tuples for volume mapping for docker run -v ...
+       """
+        if image is None:
+            raise UnboundLocalError("Docker image is not specified")
+        self.docker_image = image
+        self.port_map = port_map
+        self.fs_map = fs_map
+        kwargs["inNamespace"] = True
+        Node.__init__(self, name, **kwargs)
+        if not DockerNode.initialized:
+            DockerNode.initilize()
+            DockerNode.initialized = True
+
+    @classmethod
+    def initilize(cls):
+        """Initilize some routines of the class, for instance adding cleanup"""
+        docker = quietRun("which docker").strip()
+        if not docker:
+            raise ValueError(
+                "DockerNode requires docker executable. Is docker installed?"
+            )
+        addCleanupCallback(cls.clean_up)
+
+    @classmethod
+    def setup( cls ):
+        pass
+
+    def sendCmd( self, *args, **kwargs ):
+        assert self.shell and not self.waiting
+        printPid = kwargs.get( 'printPid', True )
+        # Allow sendCmd( [ list ] )
+        if len( args ) == 1 and isinstance( args[ 0 ], list ):
+            cmd = args[ 0 ]
+        # Allow sendCmd( cmd, arg1, arg2... )
+        elif len( args ) > 0:
+            cmd = args
+        # Convert to string
+        if not isinstance( cmd, str ):
+            cmd = ' '.join( [ str( c ) for c in cmd ] )
+        if not re.search( r'\w', cmd ):
+            # Replace empty commands with something harmless
+            cmd = 'echo -n'
+        self.lastCmd = cmd
+        printPid = printPid and not isShellBuiltin( cmd )
+        if len( cmd ) > 0 and cmd[ -1 ] == '&':
+            # print ^A{pid}\n{sentinel}
+            cmd += ' printf "\\001%d\\012" $! '
+        else:
+            pass
+        self.write( cmd + '\n' )
+        self.lastPid = None
+        self.waiting = True
+
+    def popen( self, *args, **kwargs ):
+        mncmd = [ 'docker', 'exec', self.name ]
+        return Node.popen( self, *args, mncmd=mncmd, **kwargs )
+
+    def terminate( self ):
+        dev_null = open(os.devnull, 'w')
+        subprocess.call( [ 'docker rm -f ' + self.name ],
+                         stdin=dev_null, stdout=dev_null,
+                         stderr=dev_null, shell=True )
+        dev_null.close()
+
+    def startShell( self, mnopts=None ):
+        args = [
+            'docker', 'run', '-ti', '--rm', '--privileged=true',
+            '--label=app=mininet',
+            '--hostname=' + self.name, '--name=' + self.name,
+        ]
+        if self.port_map is not None:
+            for p in self.port_map:
+                args.extend( [ '-p', '%d:%d' % ( p[ 0 ], p[ 1 ] ) ] )
+        if self.fs_map is not None:
+            for f in self.fs_map:
+                args.extend( [ '-v', '%s:%s' % ( f[ 0 ], f[ 1 ] ) ] )
+        args.extend([self.docker_image, "env", "PS1=" + chr(127), "sh"])
+
+        self.master, self.slave = pty.openpty()
+        self.shell = subprocess.Popen(
+            args, stdin=self.slave, stdout=self.slave, stderr=self.slave,
+            close_fds=True, preexec_fn=os.setpgrp
+        )
+        self.stdin = os.fdopen( self.master, 'r' )
+        self.stdout = self.stdin
+        self.pid = self.shell.pid
+        self.pollOut = select.poll()
+        self.pollOut.register( self.stdout )
+        self.outToNode[ self.stdout.fileno() ] = self
+        self.inToNode[ self.stdin.fileno() ] = self
+        self.execed = False
+        self.lastCmd = None
+        self.lastPid = None
+        self.readbuf = ''
+        # Wait for prompt
+        while True:
+            data = self.read( 1024 )
+            if data[ -1 ] == chr( 127 ) or data[0] == chr(127):
+                break
+            self.pollOut.poll()
+        self.waiting = False
+
+        for _ in range(30):
+            pid_cmd = ["docker", "inspect", "--format='{{ .State.Pid }}'", self.name]
+            pidp = subprocess.run(pid_cmd, capture_output=True, text=True)
+            ps_out = pidp.stdout.strip().strip('"').strip("'")
+            if ps_out.isdigit():
+                break
+            time.sleep(1)
+        else:
+            raise TimeoutError(f"timeout waiting for docker container {self.name} to be created")
+        self.pid = int(ps_out)
+        self.cmd( 'stty -echo; set +m' )
+        if not self.cmd("which ip").strip().endswith("/ip"):
+            raise ValueError(
+                f"Docker container {self.name} does not have ip command,"
+                " cannot proceed! Please use a docker image which includes"
+                " ip command."
+            )
+
+    @classmethod
+    def clean_up(cls):
+        containers = quietRun(
+            "docker ps -a -f label=app=mininet --format '{{.Names}}'"
+        ).strip()
+        if not containers:
+            return
+        containers = " ".join(containers.split())
+        info("*** Cleaning up Docker containers\n")
+        info(containers)
+        quietRun(f"docker rm -f {containers}")

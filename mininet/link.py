@@ -71,6 +71,8 @@ class Intf( object ):
 
     def ifconfig( self, *args ):
         "Configure ourselves using ifconfig"
+        if args[0] in ("up", "down"):
+            return self.cmd("ip", "link", "set", args[0], self.name)
         return self.cmd( 'ifconfig', self.name, *args )
 
     def setIP( self, ipstr, prefixLen=None ):
