@@ -171,7 +171,8 @@ class DockerNode( Node ):
     initialized = False
 
     def __init__(
-        self, name, image=None, publish=None, volume=None, env=None, **kwargs
+        self, name, image=None, publish=None, volume=None, env=None,
+        pull="missing", **kwargs
     ):
         """
         Create a DockerNode based on the provided parameters:
@@ -183,6 +184,8 @@ class DockerNode( Node ):
              host to the container. Passed to: docker run -v ...
           env: list of tuples or strings for set environment variables into the
              container. Passed to: docker run -e ...
+          pull: Policy for pulling the image before running. Options: "always",
+             "missing", "never". Default: "missing"
        """
         if image is None:
             raise UnboundLocalError("Docker image is not specified")
@@ -190,6 +193,7 @@ class DockerNode( Node ):
         self.publish = publish
         self.volume = volume
         self.env = env
+        self.pull = pull
         kwargs["inNamespace"] = True
         Node.__init__(self, name, **kwargs)
         if not DockerNode.initialized:
@@ -249,7 +253,7 @@ class DockerNode( Node ):
     def startShell( self, mnopts=None ):
         args = [
             'docker', 'run', '-ti', '--rm', '--privileged=true',
-            '--label=app=mininet',
+            "--pull", self.pull, "--label=app=mininet",
             '--hostname=' + self.name, '--name=' + self.name,
         ]
         if isinstance(self.publish, list):
@@ -325,7 +329,8 @@ class DockerSwitch(DockerNode, Switch):
     """A Docker switch is a Docker Node with switch functionality"""
     def start( self, controllers ):
         """Start the switch"""
-        pass
+        if self.params.get("startCmd"):
+            self.cmd(self.params["startCmd"])
 
 
 class DockerHost(DockerNode, Host):
