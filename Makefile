@@ -47,6 +47,7 @@ slowtest: $(MININET)
 	mininet/examples/test/runner.py -v
 
 mnexec: mnexec.c $(MN) mininet/net.py
+	-echo "building mnexec with version=`PYTHONPATH=. $(PYMN) --version 2>&1`"
 	$(CC) $(CFLAGS) $(LDFLAGS) \
 	-DVERSION=\"`PYTHONPATH=. $(PYMN) --version 2>&1`\" $< -o $@
 
