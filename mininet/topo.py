@@ -213,7 +213,7 @@ class Topo( object ):
             return links
         # Ignore info when sorting
         tupleSize = 3 if withKeys else 2
-        return sorted( links, key=( lambda l: naturalSeq( l[ :tupleSize ] ) ) )
+        return sorted( links, key=lambda l: naturalSeq( l[ :tupleSize ] ) )
 
     # This legacy port management mechanism is clunky and will probably
     # be removed at some point.
@@ -317,7 +317,7 @@ class SingleSwitchReversedTopo( Topo ):
         for h in irange( 1, k ):
             host = self.addHost( 'h%s' % h )
             self.addLink( host, switch,
-                          port1=0, port2=( k - h + 1 ) )
+                          port1=0, port2=k - h + 1 )
 
 
 class MinimalTopo( SingleSwitchTopo ):

@@ -257,7 +257,9 @@ class DockerNode( Node ):
             quietRun(f"kill -9 {self.pid}")
             quietRun(f"docker rm -f {self.name}")
 
+    # pylint: disable=subprocess-run-check,too-many-branches,consider-using-with
     def startShell( self, mnopts=None ):
+        """Start shell for node by running docker in foreground."""
         args = [
             'docker', 'run', '-ti', '--rm', '--privileged=true',
             "--pull", self.pull, "--label=app=mininet",
@@ -335,6 +337,7 @@ class DockerNode( Node ):
 
     @classmethod
     def clean_up(cls):
+        """Bulk clean up any docker container left over."""
         containers = quietRun(
             "docker ps -a -f label=app=mininet --format '{{.Names}}'"
         ).strip()
@@ -348,6 +351,7 @@ class DockerNode( Node ):
 
 class DockerSwitch(DockerNode, Switch):
     """A Docker switch is a Docker Node with switch functionality"""
+    # pylint: disable=unused-argument
     def start( self, controllers ):
         """Start the switch"""
         if self.params.get("startCmd"):
