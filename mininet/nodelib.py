@@ -244,11 +244,18 @@ class DockerNode( Node ):
         return Node.popen( self, *args, mncmd=mncmd, **kwargs )
 
     def terminate( self ):
-        dev_null = open(os.devnull, 'w')
-        subprocess.call( [ 'docker rm -f ' + self.name ],
-                         stdin=dev_null, stdout=dev_null,
-                         stderr=dev_null, shell=True )
-        dev_null.close()
+        try:
+            result = subprocess.run(
+                ["docker", "rm", "-f", self.name],
+                capture_output=True,
+                check=True,
+            )
+            return
+        except:
+            pass
+        # if it failed to remove the container, kill the process manually
+        quietRun(f"kill -9 {self.pid}")
+        quietRun(f"docker rm -f {self.name}")
 
     def startShell( self, mnopts=None ):
         args = [
@@ -287,11 +294,18 @@ class DockerNode( Node ):
         self.lastPid = None
         self.readbuf = ''
         # Wait for prompt
-        while True:
-            data = self.read( 1024 )
+        other_data = ""
+        while self.shell.poll() is None:
+            try:
+                data = self.read( 1024, timeout=5 )
+            except TimeoutError:
+                continue
             if data[ -1 ] == chr( 127 ) or data[0] == chr(127):
                 break
+            other_data += data
             self.pollOut.poll()
+        if self.shell.poll() is not None:
+            raise ValueError(f"Docker node failed retcode={self.shell.returncode} output={other_data}")
         self.waiting = False
 
         for _ in range(30):
