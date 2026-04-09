@@ -245,17 +245,15 @@ class DockerNode( Node ):
 
     def terminate( self ):
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ["docker", "rm", "-f", self.name],
                 capture_output=True,
                 check=True,
             )
-            return
         except:
-            pass
-        # if it failed to remove the container, kill the process manually
-        quietRun(f"kill -9 {self.pid}")
-        quietRun(f"docker rm -f {self.name}")
+            # if it failed to remove the container, kill the process manually
+            quietRun(f"kill -9 {self.pid}")
+            quietRun(f"docker rm -f {self.name}")
 
     def startShell( self, mnopts=None ):
         args = [
