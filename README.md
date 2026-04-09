@@ -144,7 +144,7 @@ Mininet includes:
 
 ### Python 3 Support
 
-- Mininet 2.3.1b4 supports Python 3 and Python 2
+- Mininet 2.3.2 supports Python 3 and Python 2
 
 - You can install both the Python 3 and Python 2 versions of
 Mininet side by side, but the most recent installation will
