@@ -68,14 +68,14 @@ class MultiGraph( object ):
                 for k, attrs in entrykeys.items():
                     if data:
                         if keys:
-                            yield( src, dst, k, attrs )
+                            yield ( src, dst, k, attrs )
                         else:
-                            yield( src, dst, attrs )
+                            yield ( src, dst, attrs )
                     else:
                         if keys:
-                            yield( src, dst, k )
+                            yield ( src, dst, k )
                         else:
-                            yield( src, dst )
+                            yield ( src, dst )
 
     def edges( self, data=False, keys=False ):
         "Return list of graph edges"
@@ -193,14 +193,14 @@ class Topo( object ):
             node1, node2 = info[ 'node1' ], info[ 'node2' ]
             if withKeys:
                 if withInfo:
-                    yield( node1, node2, key, info )
+                    yield ( node1, node2, key, info )
                 else:
-                    yield( node1, node2, key )
+                    yield ( node1, node2, key )
             else:
                 if withInfo:
-                    yield( node1, node2, info )
+                    yield ( node1, node2, info )
                 else:
-                    yield( node1, node2 )
+                    yield ( node1, node2 )
 
     def links( self, sort=False, withKeys=False, withInfo=False ):
         """Return links
@@ -213,7 +213,7 @@ class Topo( object ):
             return links
         # Ignore info when sorting
         tupleSize = 3 if withKeys else 2
-        return sorted( links, key=lambda l: naturalSeq( l[ :tupleSize ] ) )
+        return sorted( links, key=lambda link: naturalSeq(link[:tupleSize]))
 
     # This legacy port management mechanism is clunky and will probably
     # be removed at some point.

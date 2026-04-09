@@ -258,7 +258,7 @@ class DockerNode( Node ):
             quietRun(f"kill -9 {self.pid}")
             quietRun(f"docker rm -f {self.name}")
 
-    # pylint: disable=subprocess-run-check,too-many-branches,consider-using-with
+    # pylint: disable=too-many-branches,consider-using-with
     def startShell( self, mnopts=None ):
         """Start shell for node by running docker in foreground."""
         args = [
@@ -318,6 +318,7 @@ class DockerNode( Node ):
             pid_cmd = [
                 "docker", "inspect", "--format='{{ .State.Pid }}'", self.name
             ]
+            # pylint: disable=subprocess-run-check
             pidp = subprocess.run(pid_cmd, capture_output=True, text=True)
             ps_out = pidp.stdout.strip().strip("'\"")
             if ps_out.isdigit():

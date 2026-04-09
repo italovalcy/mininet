@@ -43,6 +43,7 @@ def main(num_hosts):
     CLI( net )
     net.stop()
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Mininet demo')
     parser.add_argument('--num-hosts',
