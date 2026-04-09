@@ -10,7 +10,8 @@ RUN apt-get update \
        ca-certificates patch gnupg lsb-release iptables bridge-utils \
        autoconf automake make libtool gcc pkg-config libc6-dev
 
-RUN --mount=type=bind,source=.,target=/usr/src/mininet \
+RUN --mount=type=bind,source=.,target=/mnt/mininet \
+  cp -r /mnt/mininet /usr/src/mininet \
   && cd /usr/src/mininet \
   && sed -e 's/sudo //g' \
 	 -e 's/DEBIAN_FRONTEND=noninteractive //g' \
@@ -18,7 +19,7 @@ RUN --mount=type=bind,source=.,target=/usr/src/mininet \
          -i ./util/install.sh \
   && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
   && PYTHON=python3 ./util/install.sh -f -n \
-  && rm -rf /usr/src/openflow \
+  && cd .. && rm -rf /usr/src/* \
   && apt-get purge -y autoconf automake make libtool gcc pkg-config libc6-dev ssh \
   && apt autoremove -y \
   && apt clean \
