@@ -175,7 +175,6 @@ function mn_deps {
     else  # Debian/Ubuntu
         pf=pyflakes
         pep8=pep8
-        extra=""
         # Starting around 20.04, installing pyflakes instead of pyflakes3
         # causes Python 2 to be installed, which is exactly NOT what we want.
         if [ "$DIST" = "Ubuntu" -a `expr $RELEASE '>=' 20.04` = "1" ]; then
@@ -184,7 +183,6 @@ function mn_deps {
         # Starting around 24.04, installing pycodestyle instead of pep8
         if [ "$DIST" = "Ubuntu" ] &&  [ `expr $RELEASE '>=' 24.04` = "1" ]; then
                 pep8=pycodestyle
-                extra="python3-packaging"
         fi
         # Debian 11 "bullseye" renamed
         # * pep8 to python3-pep8
@@ -195,7 +193,7 @@ function mn_deps {
         fi
 
         $install gcc make socat psmisc xterm ssh iperf telnet \
-                 ethtool help2man $pf pylint $pep8 $extra \
+                 ethtool help2man $pf pylint $pep8 \
                  net-tools ${PYPKG}-tk
 
         # Install pip
