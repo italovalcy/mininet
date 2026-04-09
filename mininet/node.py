@@ -249,7 +249,9 @@ class Node( object ):
             if timeout is None:
                 data = os.read( self.stdout.fileno(), size - count )
             else:
-                ready_to_read, _, _ = select.select([self.stdout.fileno()], [], [], timeout)
+                ready_to_read, _, _ = select.select(
+                    [self.stdout.fileno()], [], [], timeout
+                )
                 if ready_to_read:
                     data = os.read( self.stdout.fileno(), size - count )
                 else:

@@ -17,6 +17,8 @@ from mininet.log import info, warn
 from mininet.moduledeps import pathCheck
 from mininet.util import isShellBuiltin, quietRun
 
+# pylint: disable=too-many-arguments
+
 
 class LinuxBridge( Switch ):
     "Linux Bridge (with optional spanning tree)"
@@ -250,7 +252,7 @@ class DockerNode( Node ):
                 capture_output=True,
                 check=True,
             )
-        except:
+        except Exception:
             # if it failed to remove the container, kill the process manually
             quietRun(f"kill -9 {self.pid}")
             quietRun(f"docker rm -f {self.name}")
@@ -278,7 +280,7 @@ class DockerNode( Node ):
         self.master, self.slave = pty.openpty()
         self.shell = subprocess.Popen(
             args, stdin=self.slave, stdout=self.slave, stderr=self.slave,
-            close_fds=True, preexec_fn=os.setpgrp
+            close_fds=True
         )
         self.stdin = os.fdopen( self.master, 'r' )
         self.stdout = self.stdin
@@ -303,18 +305,25 @@ class DockerNode( Node ):
             other_data += data
             self.pollOut.poll()
         if self.shell.poll() is not None:
-            raise ValueError(f"Docker node failed retcode={self.shell.returncode} output={other_data}")
+            raise ValueError(
+                f"Docker node failed retcode={self.shell.returncode} "
+                f"output={other_data}"
+            )
         self.waiting = False
 
         for _ in range(30):
-            pid_cmd = ["docker", "inspect", "--format='{{ .State.Pid }}'", self.name]
+            pid_cmd = [
+                "docker", "inspect", "--format='{{ .State.Pid }}'", self.name
+            ]
             pidp = subprocess.run(pid_cmd, capture_output=True, text=True)
             ps_out = pidp.stdout.strip().strip("'\"")
             if ps_out.isdigit():
                 break
             time.sleep(1)
         else:
-            raise TimeoutError(f"timeout waiting for docker container {self.name} to be created")
+            raise TimeoutError(
+                f"timeout waiting for docker container {self.name} creation"
+            )
         self.pid = int(ps_out)
         self.cmd( 'stty -echo; set +m' )
         if not self.cmd("which ip").strip().endswith("/ip"):
