@@ -245,6 +245,7 @@ class DockerNode( Node ):
         mncmd = [ 'docker', 'exec', self.name ]
         return Node.popen( self, *args, mncmd=mncmd, **kwargs )
 
+    # pylint: disable=broad-exception-caught
     def terminate( self ):
         try:
             subprocess.run(

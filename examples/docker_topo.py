@@ -29,6 +29,7 @@ class SingleSwitchTopo(Topo):
             self.addLink(host, switch)
 
 def main(num_hosts):
+    """Main function."""
     topo = SingleSwitchTopo(
         num_hosts,
         switch_opts={"image": "alpine:latest"},
