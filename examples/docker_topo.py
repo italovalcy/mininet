@@ -3,12 +3,11 @@
 from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.nodelib import DockerNode
-from mininet.log import setLogLevel, info
+from mininet.log import setLogLevel
 from mininet.cli import CLI
 from mininet.clean import cleanup
 
 import argparse
-from time import sleep
 
 
 class SingleSwitchTopo(Topo):
