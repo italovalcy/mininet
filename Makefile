@@ -29,7 +29,7 @@ codecheck: $(PYSRC)
 	pyflakes3 $(PYSRC) || pyflakes $(PYSRC)
 	pylint --rcfile=.pylint $(PYSRC)
 #	Exclude miniedit from pep8 checking for now
-	pep8 --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py`
+	pep8 --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py` || pycodestyle --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py`
 
 errcheck: $(PYSRC)
 	-echo "Running check for errors only"
