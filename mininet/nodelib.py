@@ -354,9 +354,9 @@ class DockerNode( Node ):
 class DockerSwitch(DockerNode, Switch):
     """A Docker switch is a Docker Node with switch functionality"""
 
-     def __init__(self, *args, **kwargs):
-         """Init the DockerSwitch class."""
-         super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        """Init the DockerSwitch class."""
+        super().__init__(*args, **kwargs)
 
     # pylint: disable=unused-argument
     def start( self, controllers ):
@@ -368,9 +368,9 @@ class DockerSwitch(DockerNode, Switch):
 class DockerHost(DockerNode, Host):
     """A Docker host is the same as a Docker Node"""
 
-     def __init__(self, *args, **kwargs):
-         """Init the DockerHost class."""
-         super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        """Init the DockerHost class."""
+        super().__init__(*args, **kwargs)
 
 
 addCleanupCallback(DockerNode.clean_up)
