@@ -1,31 +1,32 @@
 Source: mininet
 Section: net
-Priority: extra
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-XSBC-Original-Maintainer: Bob Lantz <rlantz@cs.stanford.edu>
-Standards-Version: 3.9.3
-Build-Depends:
- debhelper (>= 9~),
- help2man,
- python-dev,
- python-pkg-resources,
- python-setuptools
-Homepage: http://openflow.org/mininet
+Priority: optional
+Maintainer: Italo Valcy <italo@amlight.net>
+Build-Depends: debhelper (>= 12),
+               debhelper-compat (= 12),
+               dh-python,
+               help2man,
+               python3,
+               python3-pkg-resources,
+               python3-setuptools
+Standards-Version: 4.5.1
+Vcs-Browser: https://github.com/italovalcy/mininet
+Vcs-Git: https://github.com/italovalcy/mininet.git
+Homepage: http://mininet.org/
 
 Package: mininet
-Architecture: any
-Depends:
- openvswitch-switch,
- telnet,
- socat,
- iperf,
- cgroup-bin,
- ${misc:Depends},
- ${python:Depends},
- ${shlibs:Depends}
-Recommends: openvswitch-controller
-Description: Process-based network emulator
- Mininet is a network emulator which uses lightweight
- virtualization to create virtual networks for rapid
- prototyping of Software-Defined Network (SDN) designs
- using OpenFlow.
+Architecture: linux-any
+Depends: cgroup-tools,
+         iperf,
+         net-tools,
+         python3,
+         socat,
+         telnet,
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends}
+Recommends: openvswitch-switch
+Description: process-based network emulator
+ Mininet is a network emulator which uses lightweight virtualization
+ to create virtual networks for rapid prototyping of Software-Defined
+ Network (SDN) designs using OpenFlow.
