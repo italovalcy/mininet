@@ -932,7 +932,7 @@ class Switch( Node ):
         """dpid: dpid hex string (or None to derive from name, e.g. s1 -> 1)
            opts: additional switch options
            listenPort: port to listen on for dpctl connections"""
-        Node.__init__( self, name, **params )
+        super().__init__( name, **params )
         self.dpid = self.defaultDpid( dpid )
         self.opts = opts
         self.listenPort = listenPort

@@ -197,7 +197,7 @@ class DockerNode( Node ):
         self.env = env
         self.pull = pull
         kwargs["inNamespace"] = True
-        Node.__init__(self, name, **kwargs)
+        super().__init__(name, **kwargs)
         if not DockerNode.initialized:
             DockerNode.initilize()
             DockerNode.initialized = True
@@ -243,7 +243,7 @@ class DockerNode( Node ):
 
     def popen( self, *args, **kwargs ):
         mncmd = [ 'docker', 'exec', self.name ]
-        return Node.popen( self, *args, mncmd=mncmd, **kwargs )
+        return super().popen(*args, mncmd=mncmd, **kwargs)
 
     # pylint: disable=broad-exception-caught
     def terminate( self ):
@@ -353,6 +353,11 @@ class DockerNode( Node ):
 
 class DockerSwitch(DockerNode, Switch):
     """A Docker switch is a Docker Node with switch functionality"""
+
+     def __init__(self, *args, **kwargs):
+         """Init the DockerSwitch class."""
+         super().__init__(*args, **kwargs)
+
     # pylint: disable=unused-argument
     def start( self, controllers ):
         """Start the switch"""
@@ -362,7 +367,10 @@ class DockerSwitch(DockerNode, Switch):
 
 class DockerHost(DockerNode, Host):
     """A Docker host is the same as a Docker Node"""
-    pass
+
+     def __init__(self, *args, **kwargs):
+         """Init the DockerHost class."""
+         super().__init__(*args, **kwargs)
 
 
 addCleanupCallback(DockerNode.clean_up)
