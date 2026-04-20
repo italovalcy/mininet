@@ -1,10 +1,12 @@
+[![mininet-ci-badge]][mininet-ci] [![mininet-tests-badge][mininet-tests]] [![stable][stable-target]] [![mininet-tag][mininet-tag-target]]
+
 Mininet: Rapid Prototyping for Software Defined Networks
 ========================================================
 *The best way to emulate almost any network on your laptop!*
 
 Mininet 2.3.2
 
-[![Build Status][1]](https://github.com/mininet/mininet/actions)
+[![Build Status][1]](https://github.com/italvalcy/mininet/actions)
 
 
 ### Heads-Up
@@ -62,9 +64,9 @@ $ docker run --privileged -it --rm -v $(pwd)/docker:/var/lib/docker -v /lib/modu
 >>> from mininet.nodelib import DockerHost, DockerSwitch
 >>> net = Mininet(controller = None, autoSetMacs=True, autoStaticArp=True)
 *** Error setting resource limits. Mininet's performance may be affected.
->>> h1 = net.addHost('h1')
->>> h2 = net.addHost("h2", cls=DockerHost, image="alpine:latest")
->>> h3 = net.addHost('h3', cls=DockerHost, image="busybox:latest")
+>>> h1 = net.addHost("h1")
+>>> h2 = net.addHost("h2")
+>>> h3 = net.addHost("h3")
 >>> s1 = net.addSwitch('s1', cls=DockerSwitch, image="amlight/bf-sde:9.13.4")
 >>> s2 = net.addSwitch('s2', cls=DockerSwitch, image="amlight/bf-sde:9.13.4")
 >>> s3 = net.addSwitch('s3')
@@ -78,8 +80,41 @@ $ docker run --privileged -it --rm -v $(pwd)/docker:/var/lib/docker -v /lib/modu
 >>> CLI(net)
 ```
 
-TODO: adicionar comandos pra setup de s1, s2 e s3
+At this point you should now see the Mininet console, then you can run the following commands to setup the network (i.e., download and compile a P4 code, start the switch, configure the ports, load the P4 entries, configure OpenVSwitch on switch s3, and finally run a PING test):
 
+```
+s1 curl -LO https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/tna_basic.p4
+s1 p4_build.sh tna_basic.p4
+s1 export P4_NAME=tna_basic
+s1 /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+
+s2 curl -LO https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/tna_basic.p4
+s2 p4_build.sh tna_basic.p4
+s2 export P4_NAME=tna_basic
+s2 /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+
+s1 curl -L -o /tmp/bfshell-startup.txt https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfshell-startup.txt
+s1 run_bfshell.sh -f /tmp/bfshell-startup.txt
+s1 curl -L -o /tmp/bfshell-show.txt https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfshell-show.txt
+s1 run_bfshell.sh -f /tmp/bfshell-show.txt
+s1 curl -L -o /tmp/bfrt-startup-s1.py https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfrt-startup-s1.py
+s1 run_bfshell.sh -b /tmp/bfrt-startup-s1.py
+
+s2 curl -L -o /tmp/bfshell-startup.txt https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfshell-startup.txt
+s2 run_bfshell.sh -f /tmp/bfshell-startup.txt
+s2 curl -L -o /tmp/bfshell-show.txt https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfshell-show.txt
+s2 run_bfshell.sh -f /tmp/bfshell-show.txt
+s2 curl -L -o /tmp/bfrt-startup-s2.py https://raw.githubusercontent.com/italovalcy/bf-p4-examples/refs/heads/main/tna_basic/bfrt-startup-s2.py
+s2 run_bfshell.sh -b /tmp/bfrt-startup-s2.py
+
+sh ovs-ofctl add-flow s3 dl_dst=00:00:00:00:00:01,actions=output:3
+sh ovs-ofctl add-flow s3 dl_dst=00:00:00:00:00:02,actions=output:2
+sh ovs-ofctl add-flow s3 dl_dst=00:00:00:00:00:03,actions=output:1
+h1 ping -c2 10.0.0.1
+h1 ping -c2 10.0.0.2
+h2 ping -c2 10.0.0.3
+pingall
+```
 
 ### What is Mininet?
 
@@ -214,3 +249,17 @@ Bob Lantz,
 on behalf of the Mininet Contributors
 
 [1]: https://github.com/mininet/mininet/workflows/mininet-tests/badge.svg
+
+
+[mininet-ci-badge]: https://github.com/italovalcy/mininet/actions/workflows/code-check.yml/badge.svg
+[mininet-ci]: https://github.com/italovalcy/mininet/actions/workflows/code-check.yml
+
+[mininet-tests-badge]: https://github.com/italovalcy/mininet/actions/workflows/run-tests.yml/badge.svg
+[mininet-tests]: https://github.com/italovalcy/mininet/actions/workflows/run-tests.yml
+
+[stable]: https://img.shields.io/badge/stability-stable-green.svg
+[stable-target]: https://github.com/italovalcy/mininet
+
+[mininet-tag]: https://img.shields.io/github/tag/italovalcy/mininet.svg
+[mininet-tag-target]: https://github.com/italovalcy/mininet/tags
+
