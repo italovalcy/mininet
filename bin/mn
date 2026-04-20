@@ -34,7 +34,7 @@ from mininet.node import ( Host, CPULimitedHost, Controller, OVSController,
                            DefaultController, NullController,
                            UserSwitch, OVSSwitch, OVSBridge,
                            IVSSwitch )
-from mininet.nodelib import LinuxBridge
+from mininet.nodelib import LinuxBridge, DockerHost, DockerSwitch
 from mininet.link import Link, TCLink, TCULink, OVSLink
 from mininet.topo import ( SingleSwitchTopo, LinearTopo,
                            SingleSwitchReversedTopo, MinimalTopo )
@@ -68,12 +68,14 @@ SWITCHES = { 'user': UserSwitch,
              'ovsk': OVSSwitch,
              'ivs': IVSSwitch,
              'lxbr': LinuxBridge,
+             'docker': DockerSwitch,
              'default': OVSSwitch }
 
 HOSTDEF = 'proc'
 HOSTS = { 'proc': Host,
-          'rt': specialClass( CPULimitedHost, defaults=dict( sched='rt' ) ),
-          'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ) }
+          'docker': DockerHost,
+          'rt': specialClass( CPULimitedHost, defaults={"sched": "rt"} ),
+          'cfs': specialClass( CPULimitedHost, defaults={"sched": "cfs"}) }
 
 CONTROLLERDEF = 'default'
 CONTROLLERS = { 'ref': Controller,
@@ -148,6 +150,7 @@ def addDictOption( opts, choicesDict, default, name, **kwargs ):
     helpList = [ '%s=%s' % ( k, v.__name__ )
                  for k, v in choicesDict.items() ]
     helpStr += ' ' + ( ' '.join( helpList ) )
+    # pylint: disable=use-dict-literal
     params = dict( type='string', default=default, help=helpStr )
     params.update( **kwargs )
     opts.add_option( '--' + name, **params )
@@ -294,7 +297,7 @@ class MininetRunner( object ):
                          help='timed wait (s) for switches to connect' )
         opts.add_option( '--cluster', type='string', default=None,
                          metavar='server1,server2...',
-                         help=( 'run on multiple servers (experimental!)' ) )
+                         help='run on multiple servers (experimental!)' )
         opts.add_option( '--placement', type='choice',
                          choices=list( PLACEMENT.keys() ), default='block',
                          metavar='block|random',

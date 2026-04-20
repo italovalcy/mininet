@@ -64,4 +64,4 @@ if __name__ == '__main__':
     if 'testmode' in argv:
         setLogLevel( 'debug' )
     # Prevent test_simpleperf from failing due to packet loss
-    perfTest( lossy=( 'testmode' not in argv ) )
+    perfTest( lossy='testmode' not in argv )

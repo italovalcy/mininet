@@ -68,6 +68,7 @@ class MininetFacade( object ):
                 return net[ key ]
         return None
 
+    # pylint: disable=use-yield-from
     def __iter__( self ):
         "Iterate through all nodes in all Mininet objects"
         for net in self.nets:

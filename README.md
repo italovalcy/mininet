@@ -2,9 +2,83 @@ Mininet: Rapid Prototyping for Software Defined Networks
 ========================================================
 *The best way to emulate almost any network on your laptop!*
 
-Mininet 2.3.1b4
+Mininet 2.3.2
 
 [![Build Status][1]](https://github.com/mininet/mininet/actions)
+
+
+### Heads-Up
+
+Please be advised that this is a fork version from original Mininet at https://github.com/mininet/mininet
+
+This version includes integration with Docker to allow having Docker Nodes inside Mininet. You can also run Mininet as Docker, and then you can have a Docker-in-Docker scenario.
+
+Example 1:
+
+```
+$ docker run --privileged -it --rm -v $(pwd)/docker:/var/lib/docker -v /lib/modules:/lib/modules italovalcy/mininet-dind:latest /bin/bash
+# mn --topo=linear,3 --host=docker,image=alpine:latest,volume=/tmp/xpto:/tmp/xpto,volume=/tmp/foobar:/tmp/foobar,env=DATA=FoobarXpto,env=DATA2="algo diferente"
+*** Error setting resource limits. Mininet's performance may be affected.
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h1 h2 h3
+*** Adding switches:
+s1 s2 s3
+*** Adding links:
+(h1, s1) (h2, s2) (h3, s3) (s2, s1) (s3, s2)
+*** Configuring hosts
+h1 h2 h3
+*** Starting controller
+
+*** Starting 3 switches
+s1 s2 s3 ...
+*** Starting CLI:
+mininet> h1 ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0@if23: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 7e:0c:6f:81:71:8b brd ff:ff:ff:ff:ff:ff
+27: h1-eth0@if26: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP qlen 1000
+    link/ether aa:cd:c8:ee:bb:27 brd ff:ff:ff:ff:ff:ff
+mininet> h2 env
+HOSTNAME=h2
+DATA=FoobarXpto
+SHLVL=1
+HOME=/root
+DATA2=algo diferente
+TERM=xterm
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/
+```
+
+Example 2:
+
+```
+$ docker run --privileged -it --rm -v $(pwd)/docker:/var/lib/docker -v /lib/modules:/lib/modules italovalcy/mininet-dind:latest /bin/bash
+# python3
+>>> from mininet.net import Mininet
+>>> from mininet.cli import CLI
+>>> from mininet.nodelib import DockerHost, DockerSwitch
+>>> net = Mininet(controller = None, autoSetMacs=True, autoStaticArp=True)
+*** Error setting resource limits. Mininet's performance may be affected.
+>>> h1 = net.addHost('h1')
+>>> h2 = net.addHost("h2", cls=DockerHost, image="alpine:latest")
+>>> h3 = net.addHost('h3', cls=DockerHost, image="busybox:latest")
+>>> s1 = net.addSwitch('s1', cls=DockerSwitch, image="amlight/bf-sde:9.13.4")
+>>> s2 = net.addSwitch('s2', cls=DockerSwitch, image="amlight/bf-sde:9.13.4")
+>>> s3 = net.addSwitch('s3')
+>>> net.addLink(s1, h1)
+>>> net.addLink(s2, h2)
+>>> net.addLink(s3, h3)
+>>> net.addLink(s1, s2)
+>>> net.addLink(s2, s3)
+>>> net.addLink(s3, s1)
+>>> net.start()
+>>> CLI(net)
+```
+
+TODO: adicionar comandos pra setup de s1, s2 e s3
 
 
 ### What is Mininet?
@@ -70,7 +144,7 @@ Mininet includes:
 
 ### Python 3 Support
 
-- Mininet 2.3.1b4 supports Python 3 and Python 2
+- Mininet 2.3.2 supports Python 3 and Python 2
 
 - You can install both the Python 3 and Python 2 versions of
 Mininet side by side, but the most recent installation will

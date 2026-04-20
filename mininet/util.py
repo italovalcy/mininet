@@ -259,28 +259,39 @@ def makeIntfPair( intf1, intf2, addr1=None, addr2=None, node1=None, node2=None,
        runCmd: function to run shell commands (quietRun)
        raises Exception on failure"""
     if not runCmd:
-        runCmd = quietRun if not node1 else node1.cmd
-        runCmd2 = quietRun if not node2 else node2.cmd
+        runCmd = quietRun
+    runCmd1 = quietRun if not node1 else node1.cmd
+    runCmd2 = quietRun if not node2 else node2.cmd
     if deleteIntfs:
         # Delete any old interfaces with the same names
-        runCmd( 'ip link del ' + intf1 )
+        runCmd1( 'ip link del ' + intf1 )
         runCmd2( 'ip link del ' + intf2 )
     # Create new pair
-    netns = 1 if not node2 else node2.pid
+    netns1 = 1 if not node1 else node1.pid
+    netns2 = 1 if not node2 else node2.pid
     if addr1 is None and addr2 is None:
         cmdOutput = runCmd( 'ip link add name %s '
-                            'type veth peer name %s '
-                            'netns %s' % ( intf1, intf2, netns ) )
+                            'type veth peer name %s' % ( intf1, intf2 ) )
     else:
         cmdOutput = runCmd( 'ip link add name %s '
                             'address %s '
                             'type veth peer name %s '
-                            'address %s '
-                            'netns %s' %
-                            (  intf1, addr1, intf2, addr2, netns ) )
+                            'address %s' %
+                            (  intf1, addr1, intf2, addr2 ) )
     if cmdOutput:
-        raise Exception( "Error creating interface pair (%s,%s): %s " %
+        raise Exception( "Error creating interface pair (%s,%s): %s" %
                          ( intf1, intf2, cmdOutput ) )
+
+    cmdOutput = runCmd(f"ip link set netns {netns1} {intf1}")
+    if cmdOutput:
+        raise Exception(
+            f"Failed to move intf={intf1} to netns={netns1}: {cmdOutput}"
+        )
+    cmdOutput = runCmd(f"ip link set netns {netns2} {intf2}")
+    if cmdOutput:
+        raise Exception(
+            f"Failed to move intf={intf2} to netns={netns2}: {cmdOutput}"
+        )
 
 def retry( retries, delaySecs, fn, *args, **keywords ):
     """Try something several times before giving up.
@@ -620,7 +631,13 @@ def splitArgs( argstr ):
     kwargs = {}
     for s in [ p for p in params if '=' in p ]:
         key, val = s.split( '=', 1 )
-        kwargs[ key ] = makeNumeric( val )
+        if key in kwargs:
+            if isinstance(kwargs[key], list):
+                kwargs[key].append(makeNumeric(val))
+            else:
+                kwargs[key] = [kwargs[key], makeNumeric(val)]
+        else:
+            kwargs[ key ] = makeNumeric( val )
     return fn, args, kwargs
 
 def customClass( classes, argStr ):
@@ -699,7 +716,7 @@ def waitListening( client=None, server='127.0.0.1', port=80, timeout=None ):
         raise Exception('Could not find telnet' )
     # pylint: disable=maybe-no-member
     serverIP = server if isinstance( server, BaseString ) else server.IP()
-    cmd = ( 'echo A | telnet -e A %s %s' % ( serverIP, port ) )
+    cmd = 'echo A | telnet -e A %s %s' % ( serverIP, port )
     time = 0
     result = runCmd( cmd )
     while 'Connected' not in result:

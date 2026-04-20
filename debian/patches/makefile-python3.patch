@@ -1,0 +1,22 @@
+From: Tomasz Buchert <tomasz@debian.org>
+Date: Sat, 13 Feb 2021 19:06:08 +0100
+Subject: makefile-python3
+
+===================================================================
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index ec89aa1..e7c38b0 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,7 +2,7 @@ MININET = mininet/*.py
+ TEST = mininet/test/*.py
+ EXAMPLES = mininet/examples/*.py
+ MN = bin/mn
+-PYTHON ?= python
++PYTHON ?= python3
+ PYMN = $(PYTHON) -B bin/mn
+ BIN = $(MN)
+ PYSRC = $(MININET) $(TEST) $(EXAMPLES) $(BIN)

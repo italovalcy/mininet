@@ -4,10 +4,20 @@ Node Library for Mininet
 This contains additional Node types which you may find to be useful.
 """
 
-from mininet.node import Node, Switch
+import os
+import pty
+import re
+import select
+import subprocess
+import time
+
+from mininet.clean import addCleanupCallback
+from mininet.node import Node, Host, Switch
 from mininet.log import info, warn
 from mininet.moduledeps import pathCheck
-from mininet.util import quietRun
+from mininet.util import isShellBuiltin, quietRun
+
+# pylint: disable=too-many-arguments
 
 
 class LinuxBridge( Switch ):
@@ -152,3 +162,232 @@ class NAT( Node ):
         # Put the forwarding state back to what it was
         self.cmd( 'sysctl net.ipv4.ip_forward=%s' % self.forwardState )
         super( NAT, self ).terminate()
+
+
+class DockerNode( Node ):
+    """
+    A virtual node running in a docker container
+
+    Based on https://github.com/p4lang/p4factory
+    """
+    initialized = False
+
+    def __init__(
+        self, name, image=None, publish=None, volume=None, env=None,
+        pull="missing", **kwargs
+    ):
+        """
+        Create a DockerNode based on the provided parameters:
+          name: name of the node
+          image: docker image to be used
+          publish: list of tuples or strings for publishing a container's
+             port(s) to the host. Passed to: docker run -p ...
+          volume: list of tuples or strings for binding mount a volume from
+             host to the container. Passed to: docker run -v ...
+          env: list of tuples or strings for set environment variables into the
+             container. Passed to: docker run -e ...
+          pull: Policy for pulling the image before running. Options: "always",
+             "missing", "never". Default: "missing"
+       """
+        if image is None:
+            raise UnboundLocalError("Docker image is not specified")
+        self.docker_image = image
+        self.publish = publish
+        self.volume = volume
+        self.env = env
+        self.pull = pull
+        kwargs["inNamespace"] = True
+        super().__init__(name, **kwargs)
+        if not DockerNode.initialized:
+            DockerNode.initilize()
+            DockerNode.initialized = True
+
+    @classmethod
+    def initilize(cls):
+        """Initilize some routines of the class, for instance adding cleanup"""
+        docker = quietRun("which docker").strip()
+        if not docker:
+            raise ValueError(
+                "DockerNode requires docker executable. Is docker installed?"
+            )
+
+    @classmethod
+    def setup( cls ):
+        pass
+
+    def sendCmd( self, *args, **kwargs ):
+        assert self.shell and not self.waiting
+        printPid = kwargs.get( 'printPid', True )
+        # Allow sendCmd( [ list ] )
+        if len( args ) == 1 and isinstance( args[ 0 ], list ):
+            cmd = args[ 0 ]
+        # Allow sendCmd( cmd, arg1, arg2... )
+        elif len( args ) > 0:
+            cmd = args
+        # Convert to string
+        if not isinstance( cmd, str ):
+            cmd = ' '.join( [ str( c ) for c in cmd ] )
+        if not re.search( r'\w', cmd ):
+            # Replace empty commands with something harmless
+            cmd = 'echo -n'
+        self.lastCmd = cmd
+        printPid = printPid and not isShellBuiltin( cmd )
+        if len( cmd ) > 0 and cmd[ -1 ] == '&':
+            # print ^A{pid}\n{sentinel}
+            cmd += ' printf "\\001%d\\012" $! '
+        else:
+            pass
+        self.write( cmd + '\n' )
+        self.lastPid = None
+        self.waiting = True
+
+    def popen( self, *args, **kwargs ):
+        mncmd = [ 'docker', 'exec', self.name ]
+        return super().popen(*args, mncmd=mncmd, **kwargs)
+
+    # pylint: disable=broad-exception-caught
+    def terminate( self ):
+        try:
+            subprocess.run(
+                ["docker", "rm", "-f", self.name],
+                capture_output=True,
+                check=True,
+            )
+        except Exception:
+            # if it failed to remove the container, kill the process manually
+            quietRun(f"kill -9 {self.pid}")
+            time.sleep(1)
+            quietRun(f"docker rm -f {self.name}")
+
+    # pylint: disable=too-many-branches,consider-using-with
+    def startShell( self, mnopts=None ):
+        """Start shell for node by running docker in foreground."""
+        args = [
+            'docker', 'run', '-ti', '--rm', '--privileged=true',
+            "--pull", self.pull, "--label=app=mininet",
+            '--hostname=' + self.name, '--name=' + self.name,
+        ]
+        if isinstance(self.publish, list):
+            for p in self.publish:
+                pub = "%d:%d" % (p[0], p[1]) if isinstance(p, tuple) else p
+                args.extend(['-p', pub])
+        if isinstance(self.volume, list):
+            for v in self.volume:
+                vol = "%s:%s" % (v[0], v[1]) if isinstance(v, tuple) else v
+                args.extend(['-v', vol])
+        if isinstance(self.env, list):
+            for e in self.env:
+                env = "%s='%s'" % (e[0], e[1]) if isinstance(e, tuple) else e
+                args.extend(['-e', env])
+        args.extend([self.docker_image, "env", "PS1=" + chr(127), "sh"])
+
+        self.master, self.slave = pty.openpty()
+        self.shell = subprocess.Popen(
+            args, stdin=self.slave, stdout=self.slave, stderr=self.slave,
+            close_fds=True
+        )
+        self.stdin = os.fdopen( self.master, 'r' )
+        self.stdout = self.stdin
+        self.pid = self.shell.pid
+        self.pollOut = select.poll()
+        self.pollOut.register( self.stdout )
+        self.outToNode[ self.stdout.fileno() ] = self
+        self.inToNode[ self.stdin.fileno() ] = self
+        self.execed = False
+        self.lastCmd = None
+        self.lastPid = None
+        self.readbuf = ''
+        # Wait for prompt
+        other_data = ""
+        while self.shell.poll() is None:
+            try:
+                data = self.read( 1024, timeout=5 )
+            except TimeoutError:
+                continue
+            if data[ -1 ] == chr( 127 ) or data[0] == chr(127):
+                break
+            other_data += data
+            self.pollOut.poll()
+        if self.shell.poll() is not None:
+            raise ValueError(
+                f"Docker node failed retcode={self.shell.returncode} "
+                f"output={other_data}"
+            )
+        self.waiting = False
+
+        for _ in range(30):
+            pid_cmd = [
+                "docker", "inspect", "--format='{{ .State.Pid }}'", self.name
+            ]
+            # pylint: disable=subprocess-run-check
+            pidp = subprocess.run(pid_cmd, capture_output=True, text=True)
+            ps_out = pidp.stdout.strip().strip("'\"")
+            if ps_out.isdigit():
+                break
+            time.sleep(1)
+        else:
+            raise TimeoutError(
+                f"timeout waiting for docker container {self.name} creation"
+            )
+        self.pid = int(ps_out)
+        self.cmd( 'stty -echo; set +m' )
+        if not self.cmd("which ip").strip().endswith("/ip"):
+            raise ValueError(
+                f"Docker container {self.name} does not have ip command,"
+                " cannot proceed! Please use a docker image which includes"
+                " ip command."
+            )
+
+    @classmethod
+    def clean_up(cls):
+        """Bulk clean up any docker container left over."""
+        containers = quietRun(
+            "docker ps -a -f label=app=mininet --format '{{.Names}}'"
+        ).strip()
+        if not containers:
+            return
+        containers = " ".join(re.sub("['\"]", "", containers).split())
+        info("*** Cleaning up Docker containers\n")
+        info(containers + "\n")
+        quietRun(f"docker rm -f {containers}")
+        # make sure containers were removed, to avoid cases where the
+        # the container failed to be removed because docker rm could
+        # not kill container
+        containers = quietRun(
+            "docker ps -a -q -f label=app=mininet"
+        ).strip()
+        if not containers:
+            return
+        quietRun(
+            "docker ps -q -f label=app=mininet "
+            "| xargs docker inspect -f '{{.State.Pid}}' "
+            "| xargs kill -9",
+            shell=True
+        )
+        containers = " ".join(re.sub("['\"]", "", containers).split())
+        quietRun(f"docker rm -f {containers}")
+
+
+class DockerSwitch(DockerNode, Switch):
+    """A Docker switch is a Docker Node with switch functionality"""
+
+    def __init__(self, *args, **kwargs):
+        """Init the DockerSwitch class."""
+        super().__init__(*args, **kwargs)
+
+    # pylint: disable=unused-argument
+    def start( self, controllers ):
+        """Start the switch"""
+        if self.params.get("startCmd"):
+            self.cmd(self.params["startCmd"])
+
+
+class DockerHost(DockerNode, Host):
+    """A Docker host is the same as a Docker Node"""
+
+    def __init__(self, *args, **kwargs):
+        """Init the DockerHost class."""
+        super().__init__(*args, **kwargs)
+
+
+addCleanupCallback(DockerNode.clean_up)

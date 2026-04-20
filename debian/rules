@@ -1,12 +1,20 @@
 #!/usr/bin/make -f
+# export DH_VERBOSE = 1
+
+CFLAGS+=$(shell dpkg-buildflags --get CPPFLAGS)
+export PYBUILD_NAME=mininet
 
 %:
-	dh $@ --buildsystem=python_distutils --with=python2 
+	dh $@ --buildsystem=pybuild --with=python3
 
 override_dh_auto_build:
 	make man
 	make mnexec
+	# hopefully temporary, since make man/mnexec
+	# generate *.pyc files
+	rm -f examples/*.pyc
 	dh_auto_build
 
-get-orig-source:
-	uscan --force-download --rename
+override_dh_clean:
+	make clean
+	dh_clean

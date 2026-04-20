@@ -62,6 +62,7 @@ class VLANHost( Host ):
 hosts = { 'vlan': VLANHost }
 
 
+# pylint: disable=possibly-used-before-assignment
 def exampleAllHosts( vlan ):
     """Simple example of how VLANHost can be used in a script"""
     # This is where the magic happens...

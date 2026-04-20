@@ -1,3 +1,10 @@
+mininet (2.3.2-1) unstable; urgency=medium
+
+  * New upstream version 2.3.2
+  * Applying changes from oficial Debian package 2.3.0
+
+ -- Italo Valcy <italo@amlight.net>  Tue, 14 Apr 2026 14:03:07 -0300
+
 mininet (2.1.0-0ubuntu1) saucy; urgency=low
 
   * Add 2.1.0 final packaging

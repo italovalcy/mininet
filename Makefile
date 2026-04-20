@@ -29,7 +29,7 @@ codecheck: $(PYSRC)
 	pyflakes3 $(PYSRC) || pyflakes $(PYSRC)
 	pylint --rcfile=.pylint $(PYSRC)
 #	Exclude miniedit from pep8 checking for now
-	pep8 --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py`
+	pep8 --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py` || pycodestyle --repeat --ignore=$(P8IGN) `ls $(PYSRC) | grep -v miniedit.py`
 
 errcheck: $(PYSRC)
 	-echo "Running check for errors only"
@@ -47,6 +47,7 @@ slowtest: $(MININET)
 	mininet/examples/test/runner.py -v
 
 mnexec: mnexec.c $(MN) mininet/net.py
+	-echo "building mnexec with version=`PYTHONPATH=. $(PYMN) --version 2>&1`"
 	$(CC) $(CFLAGS) $(LDFLAGS) \
 	-DVERSION=\"`PYTHONPATH=. $(PYMN) --version 2>&1`\" $< -o $@
 

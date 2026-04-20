@@ -48,6 +48,7 @@ class Intf( object ):
         self.link = link
         self.mac = mac
         self.ip, self.prefixLen = None, None
+        self.ips = []
 
         # if interface is lo, we know the ip is 127.0.0.1.
         # This saves an ifconfig command per node
@@ -71,21 +72,21 @@ class Intf( object ):
 
     def ifconfig( self, *args ):
         "Configure ourselves using ifconfig"
+        if args and args[0] in ("up", "down"):
+            return self.cmd("ip", "link", "set", args[0], self.name)
         return self.cmd( 'ifconfig', self.name, *args )
 
     def setIP( self, ipstr, prefixLen=None ):
         """Set our IP address"""
-        # This is a sign that we should perhaps rethink our prefix
-        # mechanism and/or the way we specify IP addresses
         if '/' in ipstr:
             self.ip, self.prefixLen = ipstr.split( '/' )
-            return self.ifconfig( ipstr, 'up' )
-        else:
-            if prefixLen is None:
-                raise Exception( 'No prefix length set for IP address %s'
-                                 % ( ipstr, ) )
+            self.ips.append(ipstr)
+        elif isinstance(prefixLen, int):
             self.ip, self.prefixLen = ipstr, prefixLen
-            return self.ifconfig( '%s/%s' % ( ipstr, prefixLen ) )
+            self.ips.append(f"{ipstr}/{prefixLen}")
+        else:
+            raise Exception(f"No prefix length set for IP address {ipstr}")
+        return self.cmd(f"ip addr add {self.ips[-1]} dev {self.name}")
 
     def setMAC( self, macstr ):
         """Set the MAC address for an interface.

@@ -241,12 +241,21 @@ class Node( object ):
 
     # Subshell I/O, commands and control
 
-    def read( self, size=1024 ):
+    def read( self, size=1024, timeout=None ):
         """Buffered read from node, potentially blocking.
            size: maximum number of characters to return"""
         count = len( self.readbuf )
         if count < size:
-            data = os.read( self.stdout.fileno(), size - count )
+            if timeout is None:
+                data = os.read( self.stdout.fileno(), size - count )
+            else:
+                ready_to_read, _, _ = select.select(
+                    [self.stdout.fileno()], [], [], timeout
+                )
+                if ready_to_read:
+                    data = os.read( self.stdout.fileno(), size - count )
+                else:
+                    raise TimeoutError("Read operation timed out")
             self.readbuf += self.decoder.decode( data )
         if size >= len( self.readbuf ):
             result = self.readbuf
@@ -923,7 +932,7 @@ class Switch( Node ):
         """dpid: dpid hex string (or None to derive from name, e.g. s1 -> 1)
            opts: additional switch options
            listenPort: port to listen on for dpctl connections"""
-        Node.__init__( self, name, **params )
+        super().__init__( name, **params )
         self.dpid = self.defaultDpid( dpid )
         self.opts = opts
         self.listenPort = listenPort

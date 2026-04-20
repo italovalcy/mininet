@@ -180,6 +180,10 @@ function mn_deps {
         if [ "$DIST" = "Ubuntu" -a `expr $RELEASE '>=' 20.04` = "1" ]; then
                 pf=pyflakes3
         fi
+        # Starting around 24.04, installing pycodestyle instead of pep8
+        if [ "$DIST" = "Ubuntu" ] &&  [ `expr $RELEASE '>=' 24.04` = "1" ]; then
+                pep8=pycodestyle
+        fi
         # Debian 11 "bullseye" renamed
         # * pep8 to python3-pep8
         # * pyflakes to pyflakes3
@@ -203,7 +207,7 @@ function mn_deps {
             sudo ${PYTHON} get-pip.py
             rm get-pip.py
         fi
-       ${python} -m pip install pexpect
+       ${python} -m pip install pexpect packaging
         $install iproute2 || $install iproute
         $install cgroup-tools || $install cgroup-bin
         $install cgroupfs-mount
