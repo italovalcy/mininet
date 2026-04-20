@@ -256,6 +256,7 @@ class DockerNode( Node ):
         except Exception:
             # if it failed to remove the container, kill the process manually
             quietRun(f"kill -9 {self.pid}")
+            time.sleep(1)
             quietRun(f"docker rm -f {self.name}")
 
     # pylint: disable=too-many-branches,consider-using-with
@@ -348,6 +349,22 @@ class DockerNode( Node ):
         containers = " ".join(re.sub("['\"]", "", containers).split())
         info("*** Cleaning up Docker containers\n")
         info(containers + "\n")
+        quietRun(f"docker rm -f {containers}")
+        # make sure containers were removed, to avoid cases where the
+        # the container failed to be removed because docker rm could
+        # not kill container
+        containers = quietRun(
+            "docker ps -a -q -f label=app=mininet"
+        ).strip()
+        if not containers:
+            return
+        quietRun(
+            "docker ps -q -f label=app=mininet "
+            "| xargs docker inspect -f '{{.State.Pid}}' "
+            "| xargs kill -9",
+            shell=True
+        )
+        containers = " ".join(re.sub("['\"]", "", containers).split())
         quietRun(f"docker rm -f {containers}")
 
 
