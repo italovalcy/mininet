@@ -174,7 +174,7 @@ class DockerNode( Node ):
 
     def __init__(
         self, name, image=None, publish=None, volume=None, env=None,
-        pull="missing", **kwargs
+        pull="missing", docker_network=None, **kwargs
     ):
         """
         Create a DockerNode based on the provided parameters:
@@ -196,11 +196,12 @@ class DockerNode( Node ):
         self.volume = volume
         self.env = env
         self.pull = pull
+        self.docker_network = docker_network
         kwargs["inNamespace"] = True
-        super().__init__(name, **kwargs)
         if not DockerNode.initialized:
             DockerNode.initilize()
             DockerNode.initialized = True
+        super().__init__(name, **kwargs)
 
     @classmethod
     def initilize(cls):
@@ -259,7 +260,7 @@ class DockerNode( Node ):
             time.sleep(1)
             quietRun(f"docker rm -f {self.name}")
 
-    # pylint: disable=too-many-branches,consider-using-with
+    # pylint: disable=too-many-branches,consider-using-with,too-many-statements
     def startShell( self, mnopts=None ):
         """Start shell for node by running docker in foreground."""
         args = [
@@ -336,6 +337,16 @@ class DockerNode( Node ):
                 f"Docker container {self.name} does not have ip command,"
                 " cannot proceed! Please use a docker image which includes"
                 " ip command."
+            )
+
+        if self.docker_network:
+            connect_cmd = [
+                "docker", "network", "connect", self.docker_network, self.name,
+            ]
+            subprocess.run(
+                connect_cmd,
+                capture_output=True,
+                check=True,
             )
 
     @classmethod
